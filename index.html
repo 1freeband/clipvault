@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClipVault — Ultimate Clipboard</title>
+<style>
+:root{--bg:#0b1020;--card:#151c33;--card2:#1d2643;--text:#eef2ff;--muted:#8d97b8;--accent:#6366f1;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--border:#2b3558}
+body.light{--bg:#f3f5fb;--card:#fff;--card2:#eef1f8;--text:#111827;--muted:#5b6478;--border:#d6dbe8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);padding:12px;line-height:1.4}
+.wrap{max-width:1150px;margin:0 auto;display:grid;grid-template-columns:1fr 340px;gap:14px}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+header{max-width:1150px;margin:0 auto 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{font-size:1.35rem;flex:1}
+h2{font-size:1rem;margin-bottom:10px}
+textarea,input,select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:14px;outline:none}
+textarea{width:100%;min-height:300px;font-family:ui-monospace,Consolas,monospace;resize:vertical}
+textarea:focus,input:focus{border-color:var(--accent)}
+input{width:100%}
+button{padding:9px 12px;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:#fff;background:var(--card2);color:var(--text);border:1px solid var(--border)}
+button:hover{border-color:var(--accent)}
+button.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.g{background:var(--green);color:#fff;border-color:var(--green)}
+button.r{background:var(--red);color:#fff;border-color:var(--red)}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.stats{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:12px;color:var(--muted)}
+.stats b{color:var(--text)}
+#status{font-size:13px;min-height:1.3em;margin-top:8px;color:var(--muted)}
+#status.ok{color:var(--green)}#status.err{color:var(--red)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.tabs button.on{background:var(--accent);color:#fff}
+.pane{display:none}.pane.on{display:block}
+.clip{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:9px;margin-bottom:8px;cursor:pointer;font-size:13px}
+.clip:hover{border-color:var(--accent)}
+.clip .t{white-space:pre-wrap;word-break:break-word;max-height:60px;overflow:hidden;font-family:ui-monospace,monospace;font-size:12px}
+.clip .m{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.clip .m button{padding:3px 7px;font-size:11px}
+.tag{background:var(--accent);color:#fff;border-radius:6px;padding:1px 6px;font-size:10px}
+.pin{color:var(--amber)}
+.out{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;font-family:ui-monospace,monospace;font-size:12px;max-height:300px;overflow:auto;margin-top:8px}
+.add{color:var(--green)}.del{color:var(--red);text-decoration:line-through}
+#drop{position:fixed;inset:0;background:rgba(99,102,241,.25);border:4px dashed var(--accent);display:none;align-items:center;justify-content:center;font-size:2rem;font-weight:700;z-index:9}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#list{max-height:600px;overflow:auto}
+.big{font-size:2rem;font-weight:800;text-align:center;margin:6px 0}
+kbd{background:var(--card2);border:1px solid var(--border);border-radius:4px;padding:0 5px;font-size:11px}
+</style>
+</head>
+<body>
+<div id="drop">Drop files to load them</div>
+<header>
+  <h1>📋 ClipVault</h1>
+  <button id="theme">🌓 Theme</button>
+  <button id="focusMode">🎯 Focus</button>
+  <button id="help">⌨️ Shortcuts</button>
+</header>
+<div class="wrap">
+<main>
+  <div class="card">
+    <textarea id="ta" placeholder="Paste or type anything here, any size. Drop files onto the page too. Your draft autosaves."></textarea>
+    <div class="stats" id="stats"></div>
+    <div class="row">
+      <button class="p" id="bPaste">📥 Paste</button>
+      <button class="p" id="bCopy">📤 Copy</button>
+      <button class="g" id="bSave">💾 Save clip</button>
+      <button id="bDl">⬇️ Download</button>
+      <button id="bShare">📲 Share / Drive</button>
+      <button id="bDrive">☁️ Open Drive</button>
+      <button id="bUndo">↩️ Undo</button>
+      <button id="bSpeak">🔊 Read aloud</button>
+      <button id="bLoad">📂 Open file</button>
+      <button class="r" id="bClear">🗑️ Clear</button>
+    </div>
+    <div class="row">
+      <input id="tagIn" placeholder="Tags for the saved clip (comma separated)" style="flex:2">
+      <select id="fmt"><option>txt</option><option>md</option><option>json</option><option>csv</option><option>html</option></select>
+    </div>
+    <div id="status"></div>
+    <input type="file" id="fileIn" multiple hidden>
+  </div>
+
+  <div class="card">
+    <div class="tabs" id="tabs">
+      <button data-p="tx" class="on">✨ Transform</button>
+      <button data-p="num">🔢 Numbers</button>
+      <button data-p="ex">🔍 Extract</button>
+      <button data-p="fr">🔁 Find/Replace</button>
+      <button data-p="sp">✂️ Split</button>
+      <button data-p="lock">🔐 Encrypt</button>
+      <button data-p="diff">⚖️ Compare</button>
+      <button data-p="ins">📊 Insights</button>
+    </div>
+
+    <div class="pane on" id="p-tx"><div class="row" id="txBtns"></div></div>
+
+    <div class="pane" id="p-num">
+      <p style="font-size:13px;color:var(--muted)">Adds up every number found in the text (negatives, decimals, $1,234.56, 50%). You can also type math on each line, like <code>12*4+3</code>.</p>
+      <div class="row">
+        <button class="p" id="nStats">Number stats</button>
+        <button id="nCalc">Solve math lines</button>
+        <button id="nSeq">Make a number list</button>
+        <button id="nRand">Random numbers</button>
+        <button id="nWords">Number → words</button>
+        <button id="nConv">Base / unit convert</button>
+      </div>
+      <div class="row grid2">
+        <input id="nA" type="text" inputmode="decimal" placeholder="From / count / any number">
+        <input id="nB" type="text" inputmode="decimal" placeholder="To / max">
+      </div>
+      <div class="out" id="nOut">Results show here.</div>
+    </div>
+
+    <div class="pane" id="p-ex">
+      <div class="row" id="exBtns"></div>
+      <div class="out" id="exOut">Pick something to pull out.</div>
+    </div>
+
+    <div class="pane" id="p-fr">
+      <div class="grid2"><input id="fFind" placeholder="Find"><input id="fRep" placeholder="Replace with"></div>
+      <div class="row">
+        <label style="font-size:13px"><input type="checkbox" id="fRe" style="width:auto"> Regex</label>
+        <label style="font-size:13px"><input type="checkbox" id="fCase" style="width:auto"> Match case</label>
+        <button id="fCount">Count</button><button class="p" id="fGo">Replace all</button>
+      </div>
+      <div class="out" id="fOut"></div>
+    </div>
+
+    <div class="pane" id="p-sp">
+      <p style="font-size:13px;color:var(--muted)">Splits huge text into pieces small enough for chat apps, texts or AI tools, and labels each one "Part 1/5".</p>
+      <div class="row"><input id="spN" type="number" value="2000" style="width:140px"><select id="spU"><option value="c">characters</option><option value="w">words</option><option value="l">lines</option></select><button class="p" id="spGo">Split</button></div>
+      <div id="spOut"></div>
+    </div>
+
+    <div class="pane" id="p-lock">
+      <p style="font-size:13px;color:var(--muted)">Locks your text with a password (AES-256, done on your device). Only someone with the password can unlock it.</p>
+      <div class="row"><input id="pw" type="password" placeholder="Password" style="flex:1"><button class="p" id="enc">🔒 Encrypt</button><button id="dec">🔓 Decrypt</button></div>
+    </div>
+
+    <div class="pane" id="p-diff">
+      <p style="font-size:13px;color:var(--muted)">Compares the editor with a saved clip, line by line.</p>
+      <div class="row"><select id="dSel" style="flex:1"></select><button class="p" id="dGo">Compare</button></div>
+      <div class="out" id="dOut"></div>
+    </div>
+
+    <div class="pane" id="p-ins">
+      <div class="row"><button class="p" id="iGo">Analyze text</button></div>
+      <div class="out" id="iOut"></div>
+    </div>
+  </div>
+</main>
+
+<aside>
+  <div class="card">
+    <h2>🗂️ Saved clips <span id="cnt" style="color:var(--muted);font-weight:400"></span></h2>
+    <input id="q" placeholder="Search clips, tags…">
+    <div class="row">
+      <label style="font-size:12px"><input type="checkbox" id="autoCap" style="width:auto"> Auto-save copies</label>
+      <select id="sort"><option value="new">Newest</option><option value="old">Oldest</option><option value="big">Biggest</option><option value="use">Most used</option></select>
+    </div>
+    <div class="row"><button id="exp">📦 Back up all</button><button id="imp">📥 Restore</button><button class="r" id="wipe">Delete unpinned</button></div>
+    <input type="file" id="impIn" accept=".json" hidden>
+    <div id="list" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h2>⏱️ Self-destruct note</h2>
+    <p style="font-size:12px;color:var(--muted)">Save the editor as a clip that deletes itself after this many minutes.</p>
+    <div class="row"><input id="sdMin" type="number" value="10" style="width:90px"><button id="sdGo">💣 Save timed clip</button></div>
+  </div>
+</aside>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const ta=$('ta'),st=$('status');
+const say=(m,c)=>{st.textContent=m;st.className=c||'';};
+const K='clipvault_clips',D='clipvault_draft';
+let clips=[];try{clips=JSON.parse(localStorage.getItem(K))||[]}catch{}
+const persist=()=>{try{localStorage.setItem(K,JSON.stringify(clips))}catch{say('Storage full — back up and delete some clips. Very large clips may not save.','err')}};
+let undo=[];
+const pushUndo=()=>{undo.push(ta.value);if(undo.length>30)undo.shift()};
+const setText=(t,msg)=>{pushUndo();ta.value=t;stats();draft();if(msg)say(msg,'ok')};
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtN=n=>Number.isFinite(n)?(+n.toFixed(10)).toLocaleString(undefined,{maximumFractionDigits:10}):String(n);
+
+// Stats (debounced, works on huge text)
+let sT;
+function stats(){clearTimeout(sT);sT=setTimeout(()=>{const t=ta.value,tr=t.trim();
+ const w=tr?tr.split(/\s+/).length:0,l=t?t.split(/\r\n|\r|\n/).length:0;
+ const bytes=new Blob([t]).size,nums=(t.match(/-?\d[\d,]*\.?\d*/g)||[]).length;
+ $('stats').innerHTML=`<span><b>${t.length.toLocaleString()}</b> chars</span><span><b>${w.toLocaleString()}</b> words</span><span><b>${l.toLocaleString()}</b> lines</span><span><b>${nums.toLocaleString()}</b> numbers</span><span><b>${bytes>1048576?(bytes/1048576).toFixed(2)+' MB':(bytes/1024).toFixed(1)+' KB'}</b></span><span>⏱ <b>${Math.max(1,Math.ceil(w/230))}</b> min read</span><span>🗣 <b>${Math.max(1,Math.ceil(w/150))}</b> min speak</span>`;},120)}
+let dT;const draft=()=>{clearTimeout(dT);dT=setTimeout(()=>{try{localStorage.setItem(D,ta.value)}catch{}},500)};
+ta.addEventListener('input',()=>{stats();draft()});
+ta.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter')pushUndo()});
+ta.value=localStorage.getItem(D)||'';stats();
+
+// Core buttons
+$('bPaste').onclick=async()=>{try{const t=await navigator.clipboard.readText();if(!t)return say('Clipboard is empty.','err');setText(ta.value?ta.value+(ta.value.endsWith('\n')?'':'\n')+t:t,`Pasted ${t.length.toLocaleString()} chars.`)}catch{say('Clipboard blocked — long-press the box and choose Paste.','err')}};
+async function copy(t){try{await navigator.clipboard.writeText(t)}catch{const x=document.createElement('textarea');x.value=t;document.body.appendChild(x);x.select();document.execCommand('copy');x.remove()}}
+$('bCopy').onclick=async()=>{if(!ta.value)return say('Nothing to copy.','err');await copy(ta.value);say('Copied!','ok');if($('autoCap').checked)saveClip(ta.value)};
+const stamp=()=>new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+function fileOut(){const f=$('fmt').value,t=ta.value;let body=t,mime='text/plain';
+ if(f==='json'){try{body=JSON.stringify(JSON.parse(t),null,2)}catch{body=JSON.stringify({text:t},null,2)}mime='application/json'}
+ if(f==='csv'){body=t.split(/\r?\n/).map(l=>l.split(/\t|,/).map(c=>'"'+c.replace(/"/g,'""')+'"').join(',')).join('\n');mime='text/csv'}
+ if(f==='html'){body=`<!DOCTYPE html><meta charset="utf-8"><pre>${esc(t)}</pre>`;mime='text/html'}
+ if(f==='md')mime='text/markdown';
+ return new File([body],`clip-${stamp()}.${f}`,{type:mime})}
+$('bDl').onclick=()=>{if(!ta.value.trim())return say('Nothing to save.','err');const f=fileOut(),u=URL.createObjectURL(f),a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),10000);say(`Downloaded ${f.name}`,'ok')};
+$('bShare').onclick=async()=>{if(!ta.value.trim())return say('Nothing to share.','err');const f=fileOut();
+ try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:f.name});else if(navigator.share)await navigator.share({text:ta.value});else return say('Sharing not supported here — use Download, then Open Drive.','err');say('Shared — pick Drive to save it.','ok')}catch(e){if(e.name!=='AbortError')say('Share failed: '+e.message,'err')}};
+$('bDrive').onclick=()=>{window.open('https://drive.google.com/drive/my-drive','_blank','noopener');say('Drive opened — upload your downloaded file.')};
+$('bUndo').onclick=()=>{if(!undo.length)return say('Nothing to undo.');ta.value=undo.pop();stats();draft();say('Undone.','ok')};
+$('bClear').onclick=()=>{if(ta.value&&!confirm('Clear the editor?'))return;setText('','Cleared (Undo restores it).')};
+$('bSpeak').onclick=()=>{const s=speechSynthesis;if(s.speaking){s.cancel();return say('Stopped reading.')}const t=ta.value.slice(ta.selectionStart,ta.selectionEnd)||ta.value;if(!t.trim())return;
+ t.match(/[^.!?\n]{1,220}[.!?\n]*/g).forEach(c=>s.speak(new SpeechSynthesisUtterance(c)));say('Reading aloud… press again to stop.')};
+
+// Files: open + drag & drop
+function loadFiles(files){[...files].forEach(f=>{const r=new FileReader();r.onload=()=>{setText(ta.value?ta.value+'\n\n'+r.result:r.result,`Loaded ${f.name} (${(f.size/1024).toFixed(1)} KB)`)};r.readAsText(f)})}
+$('bLoad').onclick=()=>$('fileIn').click();$('fileIn').onchange=e=>loadFiles(e.target.files);
+let dc=0;addEventListener('dragenter',e=>{e.preventDefault();dc++;$('drop').style.display='flex'});
+addEventListener('dragleave',()=>{if(--dc<=0){dc=0;$('drop').style.display='none'}});
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();dc=0;$('drop').style.display='none';if(e.dataTransfer.files.length)loadFiles(e.dataTransfer.files)});
+
+// Theme & focus
+if(localStorage.getItem('cv_theme')==='light')document.body.classList.add('light');
+$('theme').onclick=()=>{document.body.classList.toggle('light');localStorage.setItem('cv_theme',document.body.classList.contains('light')?'light':'dark')};
+$('focusMode').onclick=()=>{const a=document.querySelector('aside'),h=a.style.display==='none';a.style.display=h?'':'none';document.querySelector('.wrap').style.gridTemplateColumns=h?'':'1fr';document.querySelectorAll('main .card')[1].style.display=h?'':'none'};
+$('help').onclick=()=>alert('Shortcuts\n\nCtrl+S  Save clip\nCtrl+Shift+C  Copy all\nCtrl+D  Download\nCtrl+Z (outside box)  Undo\nCtrl+K  Search clips\nEsc  Stop reading aloud');
+addEventListener('keydown',e=>{const c=e.ctrlKey||e.metaKey;
+ if(c&&e.key==='s'){e.preventDefault();saveClip(ta.value)}
+ else if(c&&e.shiftKey&&e.key.toLowerCase()==='c'){e.preventDefault();$('bCopy').click()}
+ else if(c&&e.key==='d'){e.preventDefault();$('bDl').click()}
+ else if(c&&e.key==='k'){e.preventDefault();$('q').focus()}
+ else if(c&&e.key==='z'&&document.activeElement!==ta){e.preventDefault();$('bUndo').click()}
+ else if(e.key==='Escape')speechSynthesis.cancel()});
+
+// Tabs
+$('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p));if(b.dataset.p==='diff')fillDiff()};
+
+// Transforms (applies to selection if any, else whole text)
+function applyTx(fn,label){const s=ta.selectionStart,e=ta.selectionEnd,sel=s!==e;const src=sel?ta.value.slice(s,e):ta.value;const r=fn(src);if(r==null)return;setText(sel?ta.value.slice(0,s)+r+ta.value.slice(e):r,label+(sel?' (selection)':''))}
+const lines=t=>t.split(/\r?\n/);
+const TX={
+ 'UPPER':t=>t.toUpperCase(),'lower':t=>t.toLowerCase(),
+ 'Title Case':t=>t.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()),
+ 'Sentence case':t=>t.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g,c=>c.toUpperCase()),
+ 'camelCase':t=>t.toLowerCase().replace(/[^a-z0-9]+(.)/g,(m,c)=>c.toUpperCase()),
+ 'snake_case':t=>t.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_'),
+ 'kebab-case':t=>t.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+ 'Trim spaces':t=>lines(t).map(l=>l.replace(/\s+/g,' ').trim()).join('\n'),
+ 'Remove blank lines':t=>lines(t).filter(l=>l.trim()).join('\n'),
+ 'Remove duplicates':t=>[...new Set(lines(t))].join('\n'),
+ 'Sort A→Z':t=>lines(t).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).join('\n'),
+ 'Sort Z→A':t=>lines(t).sort((a,b)=>b.localeCompare(a,undefined,{numeric:true})).join('\n'),
+ 'Sort by length':t=>lines(t).sort((a,b)=>a.length-b.length).join('\n'),
+ 'Shuffle lines':t=>{const a=lines(t);for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a.join('\n')},
+ 'Reverse lines':t=>lines(t).reverse().join('\n'),
+ 'Reverse text':t=>[...t].reverse().join(''),
+ 'Number lines':t=>lines(t).map((l,i)=>`${i+1}. ${l}`).join('\n'),
+ 'Bullet lines':t=>lines(t).map(l=>l.trim()?'• '+l:l).join('\n'),
+ 'Strip numbering':t=>lines(t).map(l=>l.replace(/^\s*(\d+[.)]|[-*•])\s+/,'')).join('\n'),
+ 'Join lines':t=>lines(t).map(l=>l.trim()).filter(Boolean).join(' '),
+ 'Fix pasted PDF text':t=>t.replace(/-\n(\w)/g,'$1').replace(/([^\n])\n(?!\n)/g,'$1 ').replace(/ {2,}/g,' '),
+ 'Smart quotes → plain':t=>t.replace(/[“”„]/g,'"').replace(/[‘’]/g,"'").replace(/[–—]/g,'-').replace(/…/g,'...').replace(/\u00a0/g,' '),
+ 'Strip HTML':t=>{const d=document.createElement('div');d.innerHTML=t;return d.textContent},
+ 'Strip emojis':t=>t.replace(/\p{Extended_Pictographic}/gu,''),
+ 'Pretty JSON':t=>{try{return JSON.stringify(JSON.parse(t),null,2)}catch(e){say('Not valid JSON: '+e.message,'err');return null}},
+ 'Minify JSON':t=>{try{return JSON.stringify(JSON.parse(t))}catch(e){say('Not valid JSON: '+e.message,'err');return null}},
+ 'CSV → Table':t=>{const r=lines(t).filter(Boolean).map(l=>l.split(/\t|,/).map(c=>c.trim()));const w=r[0].map((_,i)=>Math.max(...r.map(x=>(x[i]||'').length)));return r.map((x,j)=>'| '+w.map((n,i)=>(x[i]||'').padEnd(n)).join(' | ')+' |'+(j===0?'\n|'+w.map(n=>'-'.repeat(n+2)).join('|')+'|':'')).join('\n')},
+ 'Base64 encode':t=>btoa(unescape(encodeURIComponent(t))),
+ 'Base64 decode':t=>{try{return decodeURIComponent(escape(atob(t.trim())))}catch{say('Not valid Base64.','err');return null}},
+ 'URL encode':t=>encodeURIComponent(t),'URL decode':t=>{try{return decodeURIComponent(t)}catch{return null}},
+ 'Morse code':t=>{const M='.- -... -.-. -.. . ..-. --. .... .. .--- -.- .-.. -- -. --- .--. --.- .-. ... - ..- ...- .-- -..- -.-- --..'.split(' '),N='----- .---- ..--- ...-- ....- ..... -.... --... ---.. ----.'.split(' ');return t.toLowerCase().split('').map(c=>c>='a'&&c<='z'?M[c.charCodeAt(0)-97]:c>='0'&&c<='9'?N[+c]:c===' '?'/':c).join(' ')},
+ 'Upside down':t=>{const a='abcdefghijklmnopqrstuvwxyz',b='ɐqɔpǝɟƃɥᴉɾʞlɯuodbɹsʇnʌʍxʎz';return [...t.toLowerCase()].map(c=>{const i=a.indexOf(c);return i>=0?b[i]:c}).reverse().join('')},
+ '𝗕𝗼𝗹𝗱 (for social)':t=>[...t].map(c=>{const n=c.codePointAt(0);if(n>=65&&n<=90)return String.fromCodePoint(n+120211);if(n>=97&&n<=122)return String.fromCodePoint(n+120205);if(n>=48&&n<=57)return String.fromCodePoint(n+120764);return c}).join(''),
+ 'sPoNgE cAsE':t=>[...t].map((c,i)=>i%2?c.toUpperCase():c.toLowerCase()).join(''),
+ 'Redact private info':t=>t.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,'[EMAIL]').replace(/\b(?:\d[ -]?){13,19}\b/g,'[CARD]').replace(/\b\d{3}-\d{2}-\d{4}\b/g,'[SSN]').replace(/(\+?1[ .-]?)?\(?\d{3}\)?[ .-]?\d{3}[ .-]?\d{4}/g,'[PHONE]'),
+};
+Object.keys(TX).forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>applyTx(TX[k],k);$('txBtns').appendChild(b)});
+
+// Numbers
+const nOut=$('nOut');
+const parseNums=t=>(t.match(/-?\$?\d[\d,]*(\.\d+)?%?/g)||[]).map(s=>parseFloat(s.replace(/[$,%]/g,''))).filter(Number.isFinite);
+$('nStats').onclick=()=>{const n=parseNums(ta.value);if(!n.length)return nOut.textContent='No numbers found.';
+ const s=n.reduce((a,b)=>a+b,0),so=[...n].sort((a,b)=>a-b),mid=so.length/2|0,med=so.length%2?so[mid]:(so[mid-1]+so[mid])/2,avg=s/n.length,sd=Math.sqrt(n.reduce((a,b)=>a+(b-avg)**2,0)/n.length);
+ const freq={};n.forEach(x=>freq[x]=(freq[x]||0)+1);const mode=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+ nOut.innerHTML=`<div class="big">Σ ${fmtN(s)}</div>Count: ${n.length.toLocaleString()}\nAverage: ${fmtN(avg)}\nMedian: ${fmtN(med)}\nMode: ${mode[1]>1?mode[0]+' (×'+mode[1]+')':'none'}\nMin: ${fmtN(so[0])}   Max: ${fmtN(so.at(-1))}   Range: ${fmtN(so.at(-1)-so[0])}\nStd dev: ${fmtN(sd)}\nProduct: ${n.length<=200?fmtN(n.reduce((a,b)=>a*b,1)):'(too many)'}\n\nWith 8% tax: ${fmtN(s*1.08)}   Tip 15/18/20%: ${fmtN(s*.15)} / ${fmtN(s*.18)} / ${fmtN(s*.2)}`};
+function safeEval(ex){ex=ex.replace(/[,$]/g,'').replace(/×/g,'*').replace(/÷/g,'/').replace(/\^/g,'**').replace(/(\d+(?:\.\d+)?)%/g,'($1/100)');
+ if(!/^[\d+\-*/().\s]+$/.test(ex))return null;let v;try{v=Function('"use strict";return('+ex+')')()}catch{return null}return Number.isFinite(v)?v:null}
+$('nCalc').onclick=()=>{let tot=0,c=0;const out=lines(ta.value).map(l=>{const ex=l.split('=')[0].trim();if(!ex)return l;const v=safeEval(ex);if(v==null)return l;tot+=v;c++;return `${ex} = ${fmtN(v)}`});
+ if(!c)return nOut.textContent='No math lines found. Try lines like 25*4 or (100-20)/3 or 15% * 80.';setText(out.join('\n'),`Solved ${c} lines.`);nOut.innerHTML=`<div class="big">${fmtN(tot)}</div>Total of all ${c} answers.`};
+$('nSeq').onclick=()=>{const a=parseFloat($('nA').value)||1,b=parseFloat($('nB').value)||10,step=a<=b?1:-1,n=Math.abs(b-a)+1;if(n>1e6)return nOut.textContent='Max 1,000,000 numbers.';
+ const r=[];for(let i=0;i<n;i++)r.push(a+i*step);setText(r.join('\n'),`Made ${n.toLocaleString()} numbers.`)};
+$('nRand').onclick=()=>{const cnt=Math.min(parseInt($('nA').value)||10,1e6),max=parseFloat($('nB').value)||100;const r=new Uint32Array(cnt);crypto.getRandomValues(r);setText([...r].map(x=>1+x%max).join('\n'),`${cnt.toLocaleString()} random numbers 1–${max}.`)};
+function words(n){if(!Number.isFinite(n))return'';if(n<0)return'negative '+words(-n);const o='zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' '),t='  twenty thirty forty fifty sixty seventy eighty ninety'.split(' '),S=['','thousand','million','billion','trillion','quadrillion'];
+ const [ip,dp]=String(n).split('.');let x=BigInt(ip);if(x<20n&&!dp)return o[Number(x)];
+ const h=k=>{let s='';if(k>=100){s+=o[k/100|0]+' hundred';k%=100;if(k)s+=' '}if(k>=20){s+=t[k/10|0];if(k%10)s+='-'+o[k%10]}else if(k)s+=o[k];return s};
+ let parts=[],i=0;if(x===0n)parts=['zero'];while(x>0n){const c=Number(x%1000n);if(c)parts.unshift(h(c)+(S[i]?' '+S[i]:''));x/=1000n;i++}
+ return parts.join(' ')+(dp?' point '+[...dp].map(d=>o[d]).join(' '):'')}
+$('nWords').onclick=()=>{const v=$('nA').value.replace(/,/g,'').trim()||ta.value.replace(/,/g,'').trim();if(!/^-?\d+(\.\d+)?$/.test(v))return nOut.textContent='Type a number in the first box.';nOut.innerHTML=`<b>${v}</b>\n\n${words(v)}\n\nCheck style: ${words(v.split('.')[0])} and ${(v.split('.')[1]||'00').padEnd(2,'0').slice(0,2)}/100 dollars`};
+$('nConv').onclick=()=>{const v=parseFloat($('nA').value.replace(/,/g,''));if(!Number.isFinite(v))return nOut.textContent='Type a number in the first box.';const i=Math.trunc(v);
+ nOut.textContent=`${fmtN(v)}\n\nBinary: ${i.toString(2)}\nHex: ${i.toString(16).toUpperCase()}\nOctal: ${i.toString(8)}\nRoman: ${i>0&&i<4000?roman(i):'n/a'}\nScientific: ${v.toExponential(4)}\n\n${fmtN(v)} km = ${fmtN(v*0.621371)} mi   |  mi → km ${fmtN(v*1.60934)}\n${fmtN(v)} kg = ${fmtN(v*2.20462)} lb   |  lb → kg ${fmtN(v/2.20462)}\n${fmtN(v)} °F = ${fmtN((v-32)*5/9)} °C  |  °C → °F ${fmtN(v*9/5+32)}\n${fmtN(v)} in = ${fmtN(v*2.54)} cm   |  ${fmtN(v)} ft = ${fmtN(v*0.3048)} m\n${fmtN(v)} gal = ${fmtN(v*3.78541)} L  |  ${fmtN(v)} oz = ${fmtN(v*28.3495)} g\n${fmtN(v)} seconds = ${dur(v)}\n${fmtN(v)} bytes = ${fmtN(v/1048576)} MB`};
+const roman=n=>[[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']].reduce((s,[v,r])=>{while(n>=v){s+=r;n-=v}return s},'');
+const dur=s=>{s=Math.abs(s);const d=s/86400|0,h=s%86400/3600|0,m=s%3600/60|0;return `${d}d ${h}h ${m}m ${Math.round(s%60)}s`};
+
+// Extract
+const EX={'📧 Emails':/[\w.+-]+@[\w-]+\.[\w.]+/g,'🔗 Links':/https?:\/\/[^\s<>"')]+/g,'📞 Phones':/(\+?1[ .-]?)?\(?\d{3}\)?[ .-]?\d{3}[ .-]?\d{4}/g,'🔢 Numbers':/-?\$?\d[\d,]*(\.\d+)?%?/g,'💲 Money':/\$\s?\d[\d,]*(\.\d{2})?/g,'📅 Dates':/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}-\d{2}-\d{2}|(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? \d{1,2},? \d{4})\b/gi,'#️⃣ Hashtags':/#\w+/g,'@ Mentions':/@\w+/g,'🌐 IPs':/\b\d{1,3}(\.\d{1,3}){3}\b/g,'🎨 Colors':/#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/gi,'✅ To-dos':/^.*\b(todo|to do|need to|must|should|follow up|deadline|asap)\b.*$/gim};
+let lastEx=[];
+Object.keys(EX).forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>{const m=[...new Set(ta.value.match(EX[k])||[])].map(s=>s.trim());lastEx=m;$('exOut').innerHTML=m.length?`<b>${m.length} found</b> <button id="exC">Copy</button> <button id="exP">Put in editor</button>\n\n${esc(m.join('\n'))}`:'None found.';if(m.length){$('exC').onclick=()=>{copy(m.join('\n'));say('Copied.','ok')};$('exP').onclick=()=>setText(m.join('\n'),'Replaced editor with results.')}};$('exBtns').appendChild(b)});
+
+// Find / replace
+function mkRe(){const f=$('fFind').value;if(!f)return null;try{return new RegExp($('fRe').checked?f:f.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'+($('fCase').checked?'':'i'))}catch(e){$('fOut').textContent='Bad regex: '+e.message;return null}}
+$('fCount').onclick=()=>{const r=mkRe();if(r)$('fOut').textContent=`${(ta.value.match(r)||[]).length.toLocaleString()} matches`};
+$('fGo').onclick=()=>{const r=mkRe();if(!r)return;const n=(ta.value.match(r)||[]).length;setText(ta.value.replace(r,$('fRep').value),`Replaced ${n} matches.`);$('fOut').textContent=`Replaced ${n}.`};
+
+// Split into parts
+$('spGo').onclick=()=>{const n=Math.max(1,parseInt($('spN').value)||2000),u=$('spU').value,t=ta.value;if(!t)return;let parts=[];
+ if(u==='c'){let i=0;while(i<t.length){let end=Math.min(i+n,t.length);if(end<t.length){const sp=t.lastIndexOf(' ',end);if(sp>i+n*0.7)end=sp}parts.push(t.slice(i,end).trim());i=end}}
+ else{const tok=u==='w'?t.split(/\s+/):lines(t);for(let i=0;i<tok.length;i+=n)parts.push(tok.slice(i,i+n).join(u==='w'?' ':'\n'))}
+ const out=$('spOut');out.innerHTML=`<p style="font-size:13px;margin:8px 0">${parts.length} parts</p>`;
+ parts.forEach((p,i)=>{const lab=`[Part ${i+1}/${parts.length}]\n`,d=document.createElement('div');d.className='clip';d.innerHTML=`<div class="t">${esc(p.slice(0,200))}</div><div class="m">${p.length.toLocaleString()} chars <button>📋 Copy part ${i+1}</button></div>`;
+ d.querySelector('button').onclick=e=>{e.stopPropagation();copy(lab+p);d.style.opacity=.5;say(`Part ${i+1} copied.`,'ok')};out.appendChild(d)})};
+
+// Encryption (AES-GCM + PBKDF2)
+const enc8=new TextEncoder(),dec8=new TextDecoder();
+async function key(pw,salt){const k=await crypto.subtle.importKey('raw',enc8.encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+const b64=u=>{let s='';for(let i=0;i<u.length;i+=32768)s+=String.fromCharCode(...u.subarray(i,i+32768));return btoa(s)};
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+$('enc').onclick=async()=>{const pw=$('pw').value;if(!pw||!ta.value)return say('Need text and a password.','err');const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+ const c=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await key(pw,salt),enc8.encode(ta.value)));const all=new Uint8Array(28+c.length);all.set(salt);all.set(iv,16);all.set(c,28);setText('CLIPVAULT:'+b64(all),'Encrypted. Keep your password — it cannot be recovered.')};
+$('dec').onclick=async()=>{try{const a=unb64(ta.value.trim().replace(/^CLIPVAULT:/,''));const p=await crypto.subtle.decrypt({name:'AES-GCM',iv:a.slice(16,28)},await key($('pw').value,a.slice(0,16)),a.slice(28));setText(dec8.decode(p),'Decrypted.')}catch{say('Wrong password or not encrypted text.','err')}};
+
+// Diff
+function fillDiff(){$('dSel').innerHTML=clips.map(c=>`<option value="${c.id}">${esc(c.text.slice(0,50))}</option>`).join('')||'<option>No saved clips</option>'}
+$('dGo').onclick=()=>{const c=clips.find(x=>x.id==$('dSel').value);if(!c)return;const a=lines(c.text),b=lines(ta.value);
+ if(a.length*b.length>4e6)return $('dOut').textContent='Too large to compare line by line.';
+ const m=a.length,n=b.length,L=Array.from({length:m+1},()=>new Uint32Array(n+1));for(let i=m-1;i>=0;i--)for(let j=n-1;j>=0;j--)L[i][j]=a[i]===b[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
+ let i=0,j=0,o=[],ad=0,dl=0;while(i<m&&j<n){if(a[i]===b[j]){o.push('  '+esc(a[i]));i++;j++}else if(L[i+1][j]>=L[i][j+1]){o.push(`<span class="del">- ${esc(a[i++])}</span>`);dl++}else{o.push(`<span class="add">+ ${esc(b[j++])}</span>`);ad++}}
+ while(i<m){o.push(`<span class="del">- ${esc(a[i++])}</span>`);dl++}while(j<n){o.push(`<span class="add">+ ${esc(b[j++])}</span>`);ad++}
+ $('dOut').innerHTML=`<b>${ad} added, ${dl} removed</b>\n\n`+o.join('\n')};
+
+// Insights
+$('iGo').onclick=()=>{const t=ta.value;if(!t.trim())return;const w=t.toLowerCase().match(/[a-z']+/g)||[],sent=t.split(/[.!?]+/).filter(s=>s.trim()).length||1;
+ const syl=w.reduce((s,x)=>s+Math.max(1,(x.replace(/e$/,'').match(/[aeiouy]+/g)||[]).length),0);const fk=206.835-1.015*(w.length/sent)-84.6*(syl/Math.max(1,w.length));
+ const stop=new Set('the a an and or but of to in on for with is are was were be it that this as at by from i you he she we they my your not have has had do does so if'.split(' '));
+ const f={};w.forEach(x=>{if(!stop.has(x)&&x.length>2)f[x]=(f[x]||0)+1});const top=Object.entries(f).sort((a,b)=>b[1]-a[1]).slice(0,12);
+ const pos=(t.match(/\b(good|great|love|happy|excellent|awesome|thanks|amazing|best|nice|glad|win)\b/gi)||[]).length,neg=(t.match(/\b(bad|hate|sad|terrible|awful|worst|angry|problem|fail|sorry|wrong|issue)\b/gi)||[]).length;
+ const lvl=fk>80?'Very easy':fk>60?'Easy / plain English':fk>40?'Fairly hard':'Hard (academic)';
+ $('iOut').innerHTML=`<b>Readability:</b> ${fk.toFixed(0)}/100 — ${lvl}\n<b>Mood:</b> ${pos>neg?'😊 Positive':neg>pos?'😟 Negative':'😐 Neutral'} (${pos}+ / ${neg}-)\n<b>Sentences:</b> ${sent}  <b>Avg words/sentence:</b> ${(w.length/sent).toFixed(1)}\n<b>Unique words:</b> ${new Set(w).size.toLocaleString()}\n<b>Longest word:</b> ${w.reduce((a,b)=>b.length>a.length?b:a,'')}\n<b>Tweets needed (280):</b> ${Math.ceil(t.length/280)}  <b>SMS (160):</b> ${Math.ceil(t.length/160)}\n<b>Fingerprint:</b> ${hash(t)}\n\n<b>Top words</b>\n${top.map(([k,v])=>`${k.padEnd(16)} ${'█'.repeat(Math.min(30,v))} ${v}`).join('\n')}`};
+const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16).toUpperCase()};
+
+// Saved clips
+function saveClip(t,ttl){if(!t||!t.trim())return say('Nothing to save.','err');const ex=clips.find(c=>c.text===t);if(ex&&!ttl){ex.ts=Date.now();persist();render();return say('Already saved — moved to top.','ok')}
+ const tags=$('tagIn').value.split(',').map(s=>s.trim()).filter(Boolean);clips.unshift({id:Date.now()+Math.random(),text:t,ts:Date.now(),tags,pin:false,uses:0,exp:ttl?Date.now()+ttl:0});persist();render();say(ttl?'Timed clip saved.':'Saved to clips.','ok')}
+$('bSave').onclick=()=>saveClip(ta.value);
+$('sdGo').onclick=()=>{const m=parseFloat($('sdMin').value);if(!(m>0))return say('Enter minutes.','err');saveClip(ta.value,m*60000)};
+const ago=ts=>{const s=(Date.now()-ts)/1000;return s<60?'just now':s<3600?(s/60|0)+'m ago':s<86400?(s/3600|0)+'h ago':(s/86400|0)+'d ago'};
+function render(){const now=Date.now();const before=clips.length;clips=clips.filter(c=>!c.exp||c.exp>now);if(clips.length!==before)persist();
+ const q=$('q').value.toLowerCase(),srt=$('sort').value;let v=clips.filter(c=>!q||c.text.toLowerCase().includes(q)||c.tags.some(t=>t.toLowerCase().includes(q)));
+ v.sort((a,b)=>(b.pin-a.pin)||(srt==='old'?a.ts-b.ts:srt==='big'?b.text.length-a.text.length:srt==='use'?b.uses-a.uses:b.ts-a.ts));
+ $('cnt').textContent=`(${clips.length})`;const L=$('list');L.innerHTML=v.length?'':'<p style="font-size:13px;color:var(--muted)">No clips yet. Press 💾 Save clip or Ctrl+S.</p>';
+ v.slice(0,300).forEach(c=>{const d=document.createElement('div');d.className='clip';
+  d.innerHTML=`<div class="t">${c.pin?'<span class="pin">📌 </span>':''}${esc(c.text.slice(0,240))}</div><div class="m">${ago(c.ts)} · ${c.text.length.toLocaleString()} ch${c.exp?` · 💣 ${Math.ceil((c.exp-now)/60000)}m`:''} ${c.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}<span style="flex:1"></span><button data-a="copy">📋</button><button data-a="ins">➕</button><button data-a="pin">📌</button><button data-a="del">✕</button></div>`;
+  d.onclick=e=>{const a=e.target.dataset.a;c.uses++;
+   if(a==='copy'){copy(c.text);say('Copied clip.','ok')}else if(a==='ins'){const p=ta.selectionStart;setText(ta.value.slice(0,p)+c.text+ta.value.slice(p),'Inserted at cursor.')}
+   else if(a==='pin'){c.pin=!c.pin}else if(a==='del'){clips=clips.filter(x=>x!==c);say('Deleted.')}else setText(c.text,'Loaded clip into editor.');persist();render()};
+  L.appendChild(d)})}
+$('q').oninput=render;$('sort').onchange=render;
+$('wipe').onclick=()=>{if(confirm('Delete all unpinned clips?')){clips=clips.filter(c=>c.pin);persist();render()}};
+$('exp').onclick=()=>{const b=new Blob([JSON.stringify(clips,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`clipvault-backup-${stamp()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(u),5000)};
+$('imp').onclick=()=>$('impIn').click();
+$('impIn').onchange=e=>{const r=new FileReader();r.onload=()=>{try{const a=JSON.parse(r.result);const have=new Set(clips.map(c=>c.text));let n=0;a.forEach(c=>{if(c.text&&!have.has(c.text)){clips.push({tags:[],pin:false,uses:0,exp:0,ts:Date.now(),...c});n++}});persist();render();say(`Restored ${n} clips.`,'ok')}catch{say('Not a valid backup file.','err')}};r.readAsText(e.target.files[0])};
+document.addEventListener('copy',()=>{if(!$('autoCap').checked)return;setTimeout(()=>{const s=String(getSelection())||ta.value.slice(ta.selectionStart,ta.selectionEnd);if(s)saveClip(s)},50)});
+render();setInterval(render,30000);
+</script>
+</body>
+</html>
